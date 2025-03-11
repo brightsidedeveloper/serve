@@ -7,12 +7,12 @@ import (
 )
 
 type Service struct {
-	Handler *http.ServeMux
+	handler *http.ServeMux
 }
 
 func NewService() *Service {
 	return &Service{
-		Handler: http.NewServeMux(),
+		handler: http.NewServeMux(),
 	}
 }
 
@@ -23,7 +23,7 @@ type Context struct {
 	JSON   func(map[string]any) error
 }
 
-func Handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Request) {
+func handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		req := &Context{
 			W: w,
@@ -61,32 +61,32 @@ func (s *Service) Mount(route *Route) {
 		switch r.Method {
 		case http.MethodGet:
 			if route.GET != nil {
-				Handle(route.GET)(w, r)
+				handle(route.GET)(w, r)
 				return
 			}
 		case http.MethodPost:
 			if route.POST != nil {
-				Handle(route.POST)(w, r)
+				handle(route.POST)(w, r)
 				return
 			}
 		case http.MethodPut:
 			if route.PUT != nil {
-				Handle(route.PUT)(w, r)
+				handle(route.PUT)(w, r)
 				return
 			}
 		case http.MethodPatch:
 			if route.PATCH != nil {
-				Handle(route.PATCH)(w, r)
+				handle(route.PATCH)(w, r)
 				return
 			}
 		case http.MethodDelete:
 			if route.DELETE != nil {
-				Handle(route.DELETE)(w, r)
+				handle(route.DELETE)(w, r)
 				return
 			}
 		}
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 
-	s.Handler.HandleFunc(route.Path, handler)
+	s.handler.HandleFunc(route.Path, handler)
 }

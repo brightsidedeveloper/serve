@@ -14,7 +14,7 @@ type Server struct {
 	server *http.Server
 }
 
-func New(service *Service) *Server {
+func NewServer(service *Service) *Server {
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("No port set... defaulting to 8080")
@@ -23,7 +23,7 @@ func New(service *Service) *Server {
 
 	s := &http.Server{
 		Addr:    ":" + port,
-		Handler: service.Handler,
+		Handler: service.handler,
 	}
 	return &Server{
 		server: s,
