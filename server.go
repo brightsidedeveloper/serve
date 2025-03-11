@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"context"
@@ -8,15 +8,13 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/brightsidedeveloper/serve/router"
 )
 
 type Server struct {
 	server *http.Server
 }
 
-func New(service *router.Service) *Server {
+func New(service *Service) *Server {
 	port := os.Getenv("PORT")
 	if port == "" {
 		log.Println("No port set... defaulting to 8080")
