@@ -2,8 +2,13 @@ package serve
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
+	"reflect"
+	"strconv"
+	"strings"
 )
 
 type Service struct {
@@ -17,8 +22,15 @@ func NewService() *Service {
 }
 
 type Context struct {
-	W      http.ResponseWriter
-	R      *http.Request
+	// Main
+	W http.ResponseWriter
+	R *http.Request
+	// Session
+	Session *Session
+	// Readers
+	Params func(v any) error
+	Body   func(v any) error
+	// Responses
 	String func(s string) error
 	JSON   func(map[string]any) error
 }
@@ -26,8 +38,62 @@ type Context struct {
 func handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		req := &Context{
+			// Main
 			W: w,
 			R: r,
+			// Session
+			Session: &Session{},
+
+			// Readers
+			Params: func(v any) error {
+				val := reflect.ValueOf(v)
+				if val.Kind() != reflect.Ptr || val.IsNil() || val.Elem().Kind() != reflect.Struct {
+					return errors.New("params: argument must be a pointer to a struct")
+				}
+
+				structVal := val.Elem()
+				structType := structVal.Type()
+
+				query := r.URL.Query()
+
+				for i := 0; i < structType.NumField(); i++ {
+					field := structType.Field(i)
+					fieldVal := structVal.Field(i)
+
+					// Skip unexported fields
+					if !fieldVal.CanSet() {
+						continue
+					}
+
+					// Get query key from tag, fallback to field name (lowercase)
+					queryKey := field.Tag.Get("query")
+					if queryKey == "" {
+						queryKey = strings.ToLower(field.Name)
+					}
+
+					// Get value from query string
+					if queryVal, ok := query[queryKey]; ok && len(queryVal) > 0 {
+						// Handle the first value (you could extend to handle slices if needed)
+						if err := setField(fieldVal, queryVal[0]); err != nil {
+							return fmt.Errorf("failed to set field %s: %w", field.Name, err)
+						}
+					}
+				}
+				return nil
+			},
+			Body: func(v any) error {
+				if r.Header.Get("Content-Type") != "application/json" {
+					return fmt.Errorf("invalid content-type: expected 'application/json', got %q", r.Header.Get("Content-Type"))
+				}
+
+				decoder := json.NewDecoder(r.Body)
+				// decoder.DisallowUnknownFields()
+				if err := decoder.Decode(v); err != nil {
+					return fmt.Errorf("failed to decode request body: %w", err)
+				}
+				return nil
+			},
+			// Responses
 			String: func(s string) error {
 				_, err := w.Write([]byte(s))
 				return err
@@ -42,6 +108,44 @@ func handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Reques
 		}
 	}
 }
+
+func setField(field reflect.Value, value string) error {
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(value)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		i, err := strconv.ParseInt(value, 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid integer value %q: %w", value, err)
+		}
+		field.SetInt(i)
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		u, err := strconv.ParseUint(value, 10, 64)
+		if err != nil {
+			return fmt.Errorf("invalid unsigned integer value %q: %w", value, err)
+		}
+		field.SetUint(u)
+	case reflect.Float32, reflect.Float64:
+		f, err := strconv.ParseFloat(value, 64)
+		if err != nil {
+			return fmt.Errorf("invalid float value %q: %w", value, err)
+		}
+		field.SetFloat(f)
+	case reflect.Bool:
+		b, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("invalid boolean value %q: %w", value, err)
+		}
+		field.SetBool(b)
+	default:
+		return fmt.Errorf("unsupported field type: %v", field.Kind())
+	}
+	return nil
+}
+
+type Session struct{}
+
+// func (s *Session) func Get() session
 
 type Route struct {
 	Path   string
