@@ -2,6 +2,10 @@ package db
 
 type DB struct{}
 
-func NewDB() (*DB, error) {
-	return &DB{}, nil
+func NewDB() *DB {
+	return &DB{}
+}
+
+func (db *DB) Close() error {
+	return nil
 }
