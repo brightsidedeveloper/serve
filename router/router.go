@@ -1,4 +1,4 @@
-package serve
+package router
 
 import (
 	"encoding/json"
@@ -15,13 +15,13 @@ import (
 // TODO: CORS
 // TODO: LOGGER
 
-type Service struct {
-	handler *http.ServeMux
+type Router struct {
+	Handler *http.ServeMux
 }
 
-func NewService() *Service {
-	return &Service{
-		handler: http.NewServeMux(),
+func NewService() *Router {
+	return &Router{
+		Handler: http.NewServeMux(),
 	}
 }
 
@@ -163,7 +163,7 @@ type Route struct {
 	DELETE func(r *Context) error
 }
 
-func (s *Service) Mount(route *Route) {
+func (s *Router) Mount(route *Route) {
 	//TODO: Set Session Context
 	if route.Auth != AUTH_ANON {
 		//TODO: Check Session
@@ -204,5 +204,5 @@ func (s *Service) Mount(route *Route) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
 
-	s.handler.HandleFunc(route.Path, handler)
+	s.Handler.HandleFunc(route.Path, handler)
 }
