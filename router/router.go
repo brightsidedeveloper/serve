@@ -19,7 +19,7 @@ type Router struct {
 	Handler *http.ServeMux
 }
 
-func NewService() *Router {
+func NewRouter() *Router {
 	return &Router{
 		Handler: http.NewServeMux(),
 	}
