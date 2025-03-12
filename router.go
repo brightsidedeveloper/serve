@@ -148,9 +148,9 @@ type Session struct{}
 // func (s *Session) func Get() session
 
 const (
-	ANONYMOUS_SESSION = 0
-	USER_SESSION      = 1
-	ADMIN_SESSION     = 2
+	AUTH_ANON  = 0
+	AUTH_USER  = 1
+	AUTH_ADMIN = 2
 )
 
 type Route struct {
@@ -164,8 +164,9 @@ type Route struct {
 }
 
 func (s *Service) Mount(route *Route) {
-	if route.Auth != ANONYMOUS_SESSION {
-		//TODO: Set Session Context
+	//TODO: Set Session Context
+	if route.Auth != AUTH_ANON {
+		//TODO: Check Session
 	}
 
 	if route.Path == "" {
