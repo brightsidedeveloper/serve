@@ -6,10 +6,14 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"reflect"
 	"strconv"
 	"strings"
 )
+
+// TODO: CORS
+// TODO: LOGGER
 
 type Service struct {
 	handler *http.ServeMux
@@ -23,13 +27,14 @@ func NewService() *Service {
 
 type Context struct {
 	// Main
-	W http.ResponseWriter
-	R *http.Request
+	W   http.ResponseWriter
+	R   *http.Request
+	URL url.Values
 	// Session
-	Session *Session
+	Session *Session // TODO
 	// Readers
-	Params func(v any) error
-	Body   func(v any) error
+	Query func(v any) error
+	Body  func(v any) error
 	// Responses
 	String func(s string) error
 	JSON   func(map[string]any) error
@@ -39,13 +44,13 @@ func handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Reques
 	return func(w http.ResponseWriter, r *http.Request) {
 		req := &Context{
 			// Main
-			W: w,
-			R: r,
+			W:   w,
+			R:   r,
+			URL: r.URL.Query(),
 			// Session
 			Session: &Session{},
-
 			// Readers
-			Params: func(v any) error {
+			Query: func(v any) error {
 				val := reflect.ValueOf(v)
 				if val.Kind() != reflect.Ptr || val.IsNil() || val.Elem().Kind() != reflect.Struct {
 					return errors.New("params: argument must be a pointer to a struct")
@@ -55,25 +60,20 @@ func handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Reques
 				structType := structVal.Type()
 
 				query := r.URL.Query()
-
-				for i := 0; i < structType.NumField(); i++ {
+				for i := range make([]struct{}, structType.NumField()) {
 					field := structType.Field(i)
 					fieldVal := structVal.Field(i)
 
-					// Skip unexported fields
 					if !fieldVal.CanSet() {
 						continue
 					}
 
-					// Get query key from tag, fallback to field name (lowercase)
 					queryKey := field.Tag.Get("query")
 					if queryKey == "" {
 						queryKey = strings.ToLower(field.Name)
 					}
 
-					// Get value from query string
 					if queryVal, ok := query[queryKey]; ok && len(queryVal) > 0 {
-						// Handle the first value (you could extend to handle slices if needed)
 						if err := setField(fieldVal, queryVal[0]); err != nil {
 							return fmt.Errorf("failed to set field %s: %w", field.Name, err)
 						}
@@ -147,8 +147,15 @@ type Session struct{}
 
 // func (s *Session) func Get() session
 
+const (
+	ANONYMOUS_SESSION = 0
+	USER_SESSION      = 1
+	ADMIN_SESSION     = 2
+)
+
 type Route struct {
 	Path   string
+	Auth   int
 	GET    func(r *Context) error
 	POST   func(r *Context) error
 	PUT    func(r *Context) error
@@ -157,6 +164,10 @@ type Route struct {
 }
 
 func (s *Service) Mount(route *Route) {
+	if route.Auth != ANONYMOUS_SESSION {
+		//TODO: Set Session Context
+	}
+
 	if route.Path == "" {
 		log.Println("Path is required to Mount Route")
 		return
