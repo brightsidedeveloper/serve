@@ -33,8 +33,8 @@ type Context struct {
 	// Session
 	Session *Session // TODO
 	// Readers
-	Query func(v any) error
-	Body  func(v any) error
+	Params func(v any) error
+	Body   func(v any) error
 	// Responses
 	String func(s string) error
 	JSON   func(map[string]any) error
@@ -50,7 +50,7 @@ func handle(h func(r *Context) error) func(w http.ResponseWriter, r *http.Reques
 			// Session
 			Session: &Session{},
 			// Readers
-			Query: func(v any) error {
+			Params: func(v any) error {
 				val := reflect.ValueOf(v)
 				if val.Kind() != reflect.Ptr || val.IsNil() || val.Elem().Kind() != reflect.Struct {
 					return errors.New("params: argument must be a pointer to a struct")
