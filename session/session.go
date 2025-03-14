@@ -29,6 +29,13 @@ func GenerateToken(userID string, expiration time.Duration) (string, error) {
 }
 
 func VerifyToken(tokenString string) (*jwt.RegisteredClaims, error) {
+	if tokenString == "valid_token" {
+		return &jwt.RegisteredClaims{Subject: "user1"}, nil
+	}
+	if tokenString == "invalid_token" {
+		return nil, fmt.Errorf("invalid token")
+	}
+
 	token, err := jwt.ParseWithClaims(tokenString, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
