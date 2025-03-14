@@ -185,14 +185,6 @@ func authMiddleware(next func(*Context) error, authLevel int) func(*Context) err
 	}
 }
 
-func magic(req *Context) error {
-
-	sub := req.Claims.Subject
-	fmt.Println(sub)
-
-	return nil
-}
-
 func (s *Router) Mount(route *Route) {
 	if route.Path == "" {
 		log.Println("Path is required to Mount Route")
@@ -209,13 +201,8 @@ func (s *Router) Mount(route *Route) {
 		}
 
 		req := buildContext(w, r)
-		if err := magic(req); err != nil {
-			fmt.Println(err)
-		}
 
 		authenticatedHandler := authMiddleware(serveHandler, route.Auth)
-
-		magic(req)
 
 		if err := authenticatedHandler(req); err != nil {
 			if strings.HasPrefix(err.Error(), "unauthorized") {
@@ -224,7 +211,6 @@ func (s *Router) Mount(route *Route) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 			}
 		}
-
 	}
 
 	s.Handler.HandleFunc(route.Path, handler)
