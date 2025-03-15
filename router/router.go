@@ -166,6 +166,25 @@ func buildContext(w http.ResponseWriter, r *http.Request) *Context {
 	}
 }
 
+func corsMiddleware(next func(*Context) error) func(*Context) error {
+	return func(req *Context) error {
+		// Set CORS headers
+		req.W.Header().Set("Access-Control-Allow-Origin", "*") // Allow all origins (use specific origin in production)
+		req.W.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		req.W.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		// Handle preflight requests
+		if req.R.Method == "OPTIONS" {
+			req.W.WriteHeader(http.StatusOK)
+			return nil
+		}
+
+		// Pass the request to the next handler
+		return next(req)
+
+	}
+}
+
 func authMiddleware(next func(*Context) error, authLevel int) func(*Context) error {
 	return func(req *Context) error {
 		if authLevel == AUTH_ANON {
@@ -201,8 +220,8 @@ func (s *Router) Mount(route *Route) {
 		}
 
 		req := buildContext(w, r)
-
-		authenticatedHandler := authMiddleware(serveHandler, route.Auth)
+		corsHandler := corsMiddleware(serveHandler)
+		authenticatedHandler := authMiddleware(corsHandler, route.Auth)
 
 		if err := authenticatedHandler(req); err != nil {
 			if strings.HasPrefix(err.Error(), "unauthorized") {
